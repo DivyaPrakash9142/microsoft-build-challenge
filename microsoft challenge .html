@@ -20,10 +20,14 @@
 <body>
   <header>
     <h1>🏫 University Lost & Found System</h1>
-    <p>Helping students reconnect with their belongings</p>
+    <p>Scan QR → Report → Notify University → Match Owner & Finder</p>
   </header>
 
   <div class="container">
+    <!-- Simulated QR Scan -->
+    <h2>📷 Simulate QR Scan</h2>
+    <button onclick="simulateQR()">Scan QR Code</button>
+
     <!-- Owner Report -->
     <form id="ownerForm">
       <h2>Owner: Report Lost Item</h2>
@@ -67,6 +71,11 @@
       localStorage.setItem("foundReports", JSON.stringify(foundReports));
       localStorage.setItem("notifications", JSON.stringify(notifications));
       document.getElementById("bell").innerText = `🔔 ${notifications.length}`;
+    }
+
+    // Simulate QR Scan
+    function simulateQR() {
+      alert("✅ QR scanned! Fill the form to report lost/found item.");
     }
 
     // Owner report
