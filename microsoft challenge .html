@@ -1,141 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>University Lost & Found System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; background: #eef2f7; margin: 0; }
-    header { background: #004080; color: white; padding: 15px; text-align: center; }
-    .container { max-width: 900px; margin: 20px auto; padding: 20px; }
-    form, .results { background: #fff; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    input, button { margin: 8px 0; padding: 10px; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
-    button { background: #004080; color: white; border: none; cursor: pointer; }
-    button:hover { background: #003060; }
-    .item { padding: 15px; border-bottom: 1px solid #ddd; }
-    .lost { color: red; font-weight: bold; }
-    .found { color: green; font-weight: bold; }
-    .notification { background: red; color: white; padding: 10px; border-radius: 50%; cursor: pointer; position: fixed; top: 20px; right: 20px; }
+    :root {
+      --primary: #004080;
+      --primary-dark: #003060;
+      --bg: #eef2f7;
+      --card: #ffffff;
+      --text: #222;
+      --muted: #666;
+      --success: #1b8f3a;
+      --danger: #c62828;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: var(--bg); margin: 0; color: var(--text); }
+    header { background: var(--primary); color: #fff; padding: 16px; text-align: center; }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 6px 0 0; font-size: 14px; opacity: 0.9; }
+    .container { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+    .card { background: var(--card); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input, button, select, textarea {
+      width: 100%; padding: 10px; border: 1px solid #d0d7de; border-radius: 8px; font-size: 14px;
+    }
+    button { background: var(--primary); color: #fff; border: none; cursor: pointer; }
+    button:hover { background: var(--primary-dark); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+    .lost { background: #ffe5e5; color: var(--danger); }
+    .found { background: #e7f6ea; color: var(--success); }
+    .notification {
+      position: fixed; top: 16px; right: 16px; background: var(--danger); color: #fff;
+      padding: 10px 12px; border-radius: 999px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .notification span { font-weight: bold; margin-left: 6px; }
+    #qr-reader { width: 100%; max-width: 360px; margin: 10px 0; }
+    #qr-result { margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .item { padding: 12px; border-bottom: 1px solid #eee; }
+    .item:last-child { border-bottom: none; }
+    .highlight { background: #f6f8fa; padding: 2px 6px; border-radius: 6px; }
+    .qr-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .qr-preview { display: flex; align-items: center; justify-content: center; min-height: 160px; border: 1px dashed #d0d7de; border-radius: 8px; }
+    .small { font-size: 12px; }
   </style>
+  <!-- QR Scanner & QR Generator Libraries -->
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+  <script src="https://unpkg.com/qrcode/build/qrcode.min.js"></script>
 </head>
 <body>
   <header>
     <h1>🏫 University Lost & Found System</h1>
-    <p>Scan QR → Report → Notify University → Match Owner & Finder</p>
+    <p>Scan QR → Report → Notify University → Auto‑Match Owner & Finder</p>
   </header>
 
+  <div class="notification" id="bell" onclick="showNotifications()">🔔 <span id="bellCount">0</span></div>
+
   <div class="container">
-    <!-- Simulated QR Scan -->
-    <h2>📷 Simulate QR Scan</h2>
-    <button onclick="simulateQR()">Scan QR Code</button>
+    <div class="grid">
+      <!-- QR Scanner -->
+      <div class="card">
+        <h2>📷 Scan item QR code</h2>
+        <div id="qr-reader"></div>
+        <div id="qr-result" class="muted">Tip: Allow camera permission. If camera fails, use “Scan from image” below.</div>
+        <div class="row">
+          <input type="file" id="qr-file" accept="image/*" />
+          <button id="scan-file-btn">Scan from image</button>
+        </div>
+      </div>
 
-    <!-- Owner Report -->
-    <form id="ownerForm">
-      <h2>Owner: Report Lost Item</h2>
-      <input type="text" id="ownerItem" placeholder="Item name" required>
-      <input type="text" id="ownerDesc" placeholder="Description" required>
-      <input type="text" id="ownerUnique" placeholder="Unique identifier (serial no, initials)" required>
-      <input type="text" id="ownerLocation" placeholder="Last seen location" required>
-      <input type="text" id="ownerContact" placeholder="Your contact info" required>
-      <button type="submit">Submit Lost Report</button>
-    </form>
-
-    <!-- Finder Report -->
-    <form id="finderForm">
-      <h2>Finder: Report Found Item</h2>
-      <input type="text" id="finderItem" placeholder="Item name" required>
-      <input type="text" id="finderLocation" placeholder="Where did you find it?" required>
-      <input type="text" id="finderUnique" placeholder="Unique identifier (serial no, initials)" required>
-      <input type="text" id="finderContact" placeholder="Your contact info" required>
-      <button type="submit">Submit Found Report</button>
-    </form>
-
-    <!-- Results -->
-    <div class="results">
-      <h2>University Notifications</h2>
-      <div id="results"></div>
+      <!-- QR Generator -->
+      <div class="card">
+        <h2>🧾 Generate QR for an item</h2>
+        <div class="qr-box">
+          <div>
+            <input id="genItemName" placeholder="Item name (e.g., Laptop, Wallet)" />
+            <input id="genUnique" placeholder="Unique identifier (serial/ID/initials)" />
+            <button id="genQrBtn">Generate QR</button>
+            <p class="small muted">Print and attach this QR to the item. Scanning will auto‑fill the unique ID.</p>
+          </div>
+          <div class="qr-preview" id="qrCanvas">QR will appear here</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Notification Bell -->
-    <div class="notification" id="bell" onclick="showNotifications()">🔔</div>
+    <!-- Owner Report -->
+    <div class="card">
+      <h2>Owner: Report lost item</h2>
+      <div class="row">
+        <input id="ownerItem" placeholder="Item name" required />
+        <input id="ownerUnique" placeholder="Unique identifier (auto‑filled by QR)" required />
+      </div>
+      <div class="row">
+        <input id="ownerLocation" placeholder="Last seen location" required />
+        <input id="ownerContact" placeholder="Your contact info (email/phone)" required />
+      </div>
+      <textarea id="ownerDesc" placeholder="Description (color, brand, marks)" rows="3"></textarea>
+      <button id="ownerSubmit">Submit lost report</button>
+      <p class="muted small">Unique identifier is used to auto‑match with found reports.</p>
+    </div>
+
+    <!-- Finder Report -->
+    <div class="card">
+      <h2>Finder: Report found item</h2>
+      <div class="row">
+        <input id="finderItem" placeholder="Item name" required />
+        <input id="finderUnique" placeholder="Unique identifier (auto‑filled by QR)" required />
+      </div>
+      <div class="row">
+        <input id="finderLocation" placeholder="Where did you find it?" required />
+        <input id="finderContact" placeholder="Your contact info (email/phone)" required />
+      </div>
+      <textarea id="finderDesc" placeholder="Notes (unique marks, condition)" rows="3"></textarea>
+      <button id="finderSubmit">Submit found report</button>
+      <p class="muted small">If you can’t scan, type the unique identifier printed on the item.</p>
+    </div>
+
+    <!-- University Notifications -->
+    <div class="card">
+      <h2>University notifications & matches</h2>
+      <div id="results"></div>
+    </div>
   </div>
 
   <script>
-    // Load saved data
+    // ===== Data store (localStorage) =====
     let lostReports = JSON.parse(localStorage.getItem("lostReports")) || [];
     let foundReports = JSON.parse(localStorage.getItem("foundReports")) || [];
     let notifications = JSON.parse(localStorage.getItem("notifications")) || [];
 
-    // Save data
     function saveData() {
       localStorage.setItem("lostReports", JSON.stringify(lostReports));
       localStorage.setItem("foundReports", JSON.stringify(foundReports));
       localStorage.setItem("notifications", JSON.stringify(notifications));
-      document.getElementById("bell").innerText = `🔔 ${notifications.length}`;
+      document.getElementById("bellCount").textContent = notifications.length;
     }
 
-    // Simulate QR Scan
-    function simulateQR() {
-      alert("✅ QR scanned! Fill the form to report lost/found item.");
-    }
-
-    // Owner report
-    document.getElementById("ownerForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const report = {
-        type: "Lost",
-        item: document.getElementById("ownerItem").value,
-        desc: document.getElementById("ownerDesc").value,
-        unique: document.getElementById("ownerUnique").value,
-        location: document.getElementById("ownerLocation").value,
-        contact: document.getElementById("ownerContact").value,
-        date: new Date().toLocaleString()
-      };
-      lostReports.push(report);
-      notifications.push(`📢 Lost report: ${report.item} (${report.unique}) at ${report.location}`);
-      alert("✅ University notified of lost item!");
-      this.reset();
+    function addNotification(text) {
+      notifications.push(text);
       saveData();
-    });
-
-    // Finder report
-    document.getElementById("finderForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const report = {
-        type: "Found",
-        item: document.getElementById("finderItem").value,
-        location: document.getElementById("finderLocation").value,
-        unique: document.getElementById("finderUnique").value,
-        contact: document.getElementById("finderContact").value,
-        date: new Date().toLocaleString()
-      };
-      foundReports.push(report);
-      notifications.push(`📢 Found report: ${report.item} (${report.unique}) at ${report.location}, contact: ${report.contact}`);
-      alert("✅ University notified of found item!");
-      this.reset();
-      matchReports(report);
-      saveData();
-    });
-
-    // Match lost and found reports
-    function matchReports(foundReport) {
-      const match = lostReports.find(lost => lost.unique === foundReport.unique);
-      if (match) {
-        notifications.push(`✅ Match found! Lost: ${match.item} | Found: ${foundReport.item}. University should contact Owner (${match.contact}) and Finder (${foundReport.contact}).`);
-        saveData();
-      }
     }
 
-    // Show notifications
-    function showNotifications() {
+    function renderNotifications() {
       const results = document.getElementById("results");
       results.innerHTML = "";
+      if (notifications.length === 0) {
+        results.innerHTML = "<p class='muted'>No notifications yet.</p>";
+        return;
+      }
       notifications.forEach(n => {
-        results.innerHTML += `<p>${n}</p>`;
+        const p = document.createElement("p");
+        p.textContent = n;
+        results.appendChild(p);
       });
     }
 
-    // Initial bell count
-    document.getElementById("bell").innerText = `🔔 ${notifications.length}`;
+    function showNotifications() {
+      renderNotifications();
+      // Optional: reset counter after viewing
+      // notifications = [];
+      // saveData();
+    }
+
+    // ===== Matching logic =====
+    function matchReports(foundReport) {
+      const match = lostReports.find(lost =>
+        lost.unique.trim().toLowerCase() === foundReport.unique.trim().toLowerCase()
+      );
+      if (match) {
+        addNotification(
+          `✅ Match found! Lost: ${match.item} | Found: ${foundReport.item}. University should contact Owner (${match.contact}) and Finder (${foundReport.contact}).`
+        );
+      }
+    }
+
+    // ===== QR Scanner (camera) =====
+    let scanner;
+    function startScanner() {
+      try {
+        scanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+        scanner.render(onScanSuccess, onScanError);
+      } catch (err) {
+        console.warn("Scanner init error:", err);
+        document.getElementById("qr-result").textContent =
+          "Camera scanner failed to initialize. Try 'Scan from image' or check HTTPS/camera permissions.";
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      document.getElementById("qr-result").textContent = `QR scanned: ${decodedText}`;
+      // Auto-fill unique fields
+      document.getElementById("ownerUnique").value = decodedText;
+      document.getElementById("finderUnique").value = decodedText;
+    }
+
+    function onScanError(errorMessage) {
+      // Non-fatal scan errors are common; keep it quiet
+    }
+
+    // ===== QR Scan from image (fallback) =====
+    document.getElementById("scan-file-btn").addEventListener("click", async () => {
+      const fileInput = document.getElementById("qr-file");
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        alert("Please choose an image file containing a QR code.");
+        return;
+      }
+      try {
+        const html5QrCode = new Html5Qrcode(/* element id not needed for file scan */ "qr-reader");
+        const result = await html5QrCode.scanFile(file, true);
+        document.getElementById("qr-result").textContent = `QR scanned from image: ${result}`;
+        document.getElementById("ownerUnique").value = result;
+        document.getElementById("finderUnique").value = result;
+        html5QrCode.clear();
+      } catch (err) {
+        alert("Failed to scan QR from image. Try a clearer photo.");
+        console.error(err);
+      }
+    });
+
+    // ===== QR Generator =====
+    document.getElementById("genQrBtn").addEventListener("click", () => {
+      const itemName = document.getElementById("genItemName").value.trim();
+      const unique = document.getElementById("genUnique").value.trim();
+      if (!unique) {
+        alert("Enter a unique identifier to generate QR.");
+        return;
+      }
+      const payload = unique; // keep QR minimal—just the unique ID
+      const canvasBox = document.getElementById("qrCanvas");
+      canvasBox.innerHTML = "";
+      QRCode.toCanvas(
+        document.createElement("canvas"),
+        payload,
+        { width: 180, margin: 2 },
+        (error, canvas) => {
+          if (error) {
+            alert("QR generation failed.");
+            console.error(error);
+            return;
+          }
+          canvasBox.appendChild(canvas);
+          const label = document.createElement("div");
+          label.className = "small muted";
+          label.textContent = itemName ? `Item: ${itemName} | ID: ${unique}` : `ID: ${unique}`;
+          canvasBox.appendChild(label);
+        }
+      );
+    });
+
+    // ===== Owner submit =====
+    document.getElementById("ownerSubmit").addEventListener("click", () => {
+      const report = {
+        type: "Lost",
+        item: document.getElementById("ownerItem").value.trim(),
+        desc: document.getElementById("ownerDesc").value.trim(),
+        unique: document.getElementById("ownerUnique").value.trim(),
+        location: document.getElementById("ownerLocation").value.trim(),
+        contact: document.getElementById("ownerContact").value.trim(),
+        date: new Date().toLocaleString()
+      };
+      if (!report.item || !report.unique || !report.location || !report.contact) {
+        alert("Please fill item, unique ID, location, and contact.");
+        return;
+      }
+      lostReports.push(report);
+      addNotification(`📢 Lost report: ${report.item} (${report.unique}) at ${report.location}`);
+      alert("✅ University notified of lost item!");
+      saveData();
+      renderNotifications();
+      // Clear minimal fields (keep unique if scanned)
+      document.getElementById("ownerItem").value = "";
+      document.getElementById("ownerDesc").value = "";
+      document.getElementById("ownerLocation").value = "";
+      document.getElementById("ownerContact").value = "";
+    });
+
+    // ===== Finder submit =====
+    document.getElementById("finderSubmit").addEventListener("click", () => {
+      const report = {
+        type: "Found",
+        item: document.getElementById("finderItem").value.trim(),
+        desc: document.getElementById("finderDesc").value.trim(),
+        unique: document.getElementById("finderUnique").value.trim(),
+        location: document.getElementById("finderLocation").value.trim(),
+        contact: document.getElementById("finderContact").value.trim(),
+        date: new Date().toLocaleString()
+      };
+      if (!report.item || !report.unique || !report.location || !report.contact) {
+        alert("Please fill item, unique ID, location, and contact.");
+        return;
+      }
+      foundReports.push(report);
+      addNotification(`📢 Found report: ${report.item} (${report.unique}) at ${report.location}, contact: ${report.contact}`);
+      alert("✅ University notified of found item!");
+      matchReports(report);
+      saveData();
+      renderNotifications();
+      // Clear minimal fields (keep unique if scanned)
+      document.getElementById("finderItem").value = "";
+      document.getElementById("finderDesc").value = "";
+      document.getElementById("finderLocation").value = "";
+      document.getElementById("finderContact").value = "";
+    });
+
+    // ===== Initial load =====
+    document.getElementById("bellCount").textContent = notifications.length;
+    renderNotifications();
+    startScanner();
   </script>
 </body>
 </html>
