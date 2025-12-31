@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>University Lost & Found System</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #eef2f7; margin: 0; }
+    header { background: #004080; color: white; padding: 15px; text-align: center; }
+    .container { max-width: 900px; margin: 20px auto; padding: 20px; }
+    form, .results { background: #fff; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, button { margin: 8px 0; padding: 10px; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #004080; color: white; border: none; cursor: pointer; }
+    button:hover { background: #003060; }
+    .item { padding: 15px; border-bottom: 1px solid #ddd; }
+    .lost { color: red; font-weight: bold; }
+    .found { color: green; font-weight: bold; }
+    .notification { background: red; color: white; padding: 10px; border-radius: 50%; cursor: pointer; position: fixed; top: 20px; right: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🏫 University Lost & Found System</h1>
+    <p>Helping students reconnect with their belongings</p>
+  </header>
+
+  <div class="container">
+    <!-- Owner Report -->
+    <form id="ownerForm">
+      <h2>Owner: Report Lost Item</h2>
+      <input type="text" id="ownerItem" placeholder="Item name" required>
+      <input type="text" id="ownerDesc" placeholder="Description" required>
+      <input type="text" id="ownerUnique" placeholder="Unique identifier (serial no, initials)" required>
+      <input type="text" id="ownerLocation" placeholder="Last seen location" required>
+      <input type="text" id="ownerContact" placeholder="Your contact info" required>
+      <button type="submit">Submit Lost Report</button>
+    </form>
+
+    <!-- Finder Report -->
+    <form id="finderForm">
+      <h2>Finder: Report Found Item</h2>
+      <input type="text" id="finderItem" placeholder="Item name" required>
+      <input type="text" id="finderLocation" placeholder="Where did you find it?" required>
+      <input type="text" id="finderUnique" placeholder="Unique identifier (serial no, initials)" required>
+      <input type="text" id="finderContact" placeholder="Your contact info" required>
+      <button type="submit">Submit Found Report</button>
+    </form>
+
+    <!-- Results -->
+    <div class="results">
+      <h2>University Notifications</h2>
+      <div id="results"></div>
+    </div>
+
+    <!-- Notification Bell -->
+    <div class="notification" id="bell" onclick="showNotifications()">🔔</div>
+  </div>
+
+  <script>
+    // Load saved data
+    let lostReports = JSON.parse(localStorage.getItem("lostReports")) || [];
+    let foundReports = JSON.parse(localStorage.getItem("foundReports")) || [];
+    let notifications = JSON.parse(localStorage.getItem("notifications")) || [];
+
+    // Save data
+    function saveData() {
+      localStorage.setItem("lostReports", JSON.stringify(lostReports));
+      localStorage.setItem("foundReports", JSON.stringify(foundReports));
+      localStorage.setItem("notifications", JSON.stringify(notifications));
+      document.getElementById("bell").innerText = `🔔 ${notifications.length}`;
+    }
+
+    // Owner report
+    document.getElementById("ownerForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const report = {
+        type: "Lost",
+        item: document.getElementById("ownerItem").value,
+        desc: document.getElementById("ownerDesc").value,
+        unique: document.getElementById("ownerUnique").value,
+        location: document.getElementById("ownerLocation").value,
+        contact: document.getElementById("ownerContact").value,
+        date: new Date().toLocaleString()
+      };
+      lostReports.push(report);
+      notifications.push(`📢 Lost report: ${report.item} (${report.unique}) at ${report.location}`);
+      alert("✅ University notified of lost item!");
+      this.reset();
+      saveData();
+    });
+
+    // Finder report
+    document.getElementById("finderForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const report = {
+        type: "Found",
+        item: document.getElementById("finderItem").value,
+        location: document.getElementById("finderLocation").value,
+        unique: document.getElementById("finderUnique").value,
+        contact: document.getElementById("finderContact").value,
+        date: new Date().toLocaleString()
+      };
+      foundReports.push(report);
+      notifications.push(`📢 Found report: ${report.item} (${report.unique}) at ${report.location}, contact: ${report.contact}`);
+      alert("✅ University notified of found item!");
+      this.reset();
+      matchReports(report);
+      saveData();
+    });
+
+    // Match lost and found reports
+    function matchReports(foundReport) {
+      const match = lostReports.find(lost => lost.unique === foundReport.unique);
+      if (match) {
+        notifications.push(`✅ Match found! Lost: ${match.item} | Found: ${foundReport.item}. University should contact Owner (${match.contact}) and Finder (${foundReport.contact}).`);
+        saveData();
+      }
+    }
+
+    // Show notifications
+    function showNotifications() {
+      const results = document.getElementById("results");
+      results.innerHTML = "";
+      notifications.forEach(n => {
+        results.innerHTML += `<p>${n}</p>`;
+      });
+    }
+
+    // Initial bell count
+    document.getElementById("bell").innerText = `🔔 ${notifications.length}`;
+  </script>
+</body>
+</html>
